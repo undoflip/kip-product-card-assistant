@@ -48,11 +48,17 @@ def create_app(drafter_factory: Callable[[], Drafter] = create_drafter) -> FastA
 
     @app.post("/api/generate")
     async def generate(request: Request) -> dict:
+        # С таким типом браузер не отправит запрос с чужого сайта без предварительной проверки CORS,
+        # поэтому чужая страница не сможет тратить ключ через сервис на localhost.
+        if request.headers.get("content-type", "").split(";")[0].strip().lower() != "application/json":
+            raise InputError("unsupported_media_type", 415, "Отправьте данные с заголовком Content-Type: application/json.")
         # Тело разбираем сами: FastAPI отдал бы на битый JSON свою ошибку на английском.
-        body = await request.body()
-        if len(body) > MAX_BODY_BYTES:
-            raise InputError("body_too_large", 413, f"Данные больше {MAX_BODY_BYTES // 1000} КБ. Сократите описание.")
-        assessment = assess(parse_product(body))
+        body = bytearray()
+        async for chunk in request.stream():
+            body += chunk
+            if len(body) > MAX_BODY_BYTES:
+                raise InputError("body_too_large", 413, f"Данные больше {MAX_BODY_BYTES // 1000} КБ. Сократите описание.")
+        assessment = assess(parse_product(bytes(body)))
         drafter = drafter_factory()
         card = await run_in_threadpool(generate_card, assessment, drafter)
         return {"card": card.model_dump(), "markdown": card_to_markdown(card)}

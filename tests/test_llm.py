@@ -153,3 +153,11 @@ def test_model_and_base_url_can_be_configured(monkeypatch):
     drafter = create_drafter()
     assert drafter.model == "claude-sonnet-5-5"
     assert str(drafter.client.base_url).rstrip("/") == "https://proxy.test"
+
+
+def test_rejected_request_reason_reaches_the_log(caplog):
+    body = {"type": "error", "error": {"type": "invalid_request_error", "message": "Your credit balance is too low"}}
+    drafter = drafter_with(respond_with(400, body))
+    with pytest.raises(LLMError), caplog.at_level("ERROR", logger="app.llm"):
+        drafter("система", "пользователь")
+    assert "credit balance is too low" in caplog.text

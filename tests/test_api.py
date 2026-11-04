@@ -27,7 +27,7 @@ def client_with(*responses) -> tuple[TestClient, FakeDrafter]:
 
 def post(client: TestClient, body):
     content = body if isinstance(body, (bytes, str)) else json.dumps(body, ensure_ascii=False)
-    return client.post("/api/generate", content=content)
+    return client.post("/api/generate", content=content, headers={"Content-Type": "application/json"})
 
 
 def test_page_is_served():
@@ -113,3 +113,33 @@ def test_unexpected_error_returns_json_without_details():
     assert response.status_code == 500
     assert response.json()["error"]["code"] == "internal_error"
     assert "секрет" not in response.text
+
+
+@pytest.mark.parametrize("content_type", ["text/plain", "application/x-www-form-urlencoded", "multipart/form-data"])
+def test_cross_site_form_types_do_not_reach_the_model(content_type):
+    client, drafter = client_with(make_draft())
+    response = client.post(
+        "/api/generate", content=json.dumps(VALID, ensure_ascii=False), headers={"Content-Type": content_type}
+    )
+    assert response.status_code == 415
+    assert response.json()["error"]["code"] == "unsupported_media_type"
+    assert drafter.calls == []
+
+
+def test_json_content_type_with_charset_is_accepted():
+    client, _ = client_with(make_draft())
+    response = client.post(
+        "/api/generate",
+        content=json.dumps(VALID, ensure_ascii=False),
+        headers={"Content-Type": "application/json; charset=utf-8"},
+    )
+    assert response.status_code == 200
+
+
+def test_preflight_from_other_origin_is_not_allowed():
+    client, _ = client_with(make_draft())
+    response = client.options(
+        "/api/generate",
+        headers={"Origin": "https://evil.example", "Access-Control-Request-Method": "POST"},
+    )
+    assert "access-control-allow-origin" not in response.headers

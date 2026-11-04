@@ -17,9 +17,11 @@ QUERIES_LABEL = "Поисковые запросы (search_queries)"
 COMMERCIAL_LABEL = "Блок для менеджера (commercial)"
 
 NUMBER = r"\d+(?:\.\d+)?"
-NUMBER_WITH_WORD = re.compile(rf"({NUMBER})\s*([a-zа-я°%][a-zа-я0-9/²°]*|%)")
-RANGE_WITH_WORD = re.compile(rf"({NUMBER})\s*(?:-|\.\.\.|…|до)\s*\+?-?{NUMBER}\s*([a-zа-я°%][a-zа-я0-9/²°]*|%)")
-MODEL_TOKEN = re.compile(r"[a-zа-я0-9./-]*[a-z0-9][a-zа-я0-9./-]*")
+# (?<!\d) не даёт начинать разбор с середины числа: иначе длинная строка цифр обрабатывается за квадратичное время.
+NUMBER_WITH_WORD = re.compile(rf"(?<!\d)({NUMBER})\s*([a-zа-я°%][a-zа-я0-9/²°]*|%)")
+RANGE_WITH_WORD = re.compile(rf"(?<!\d)({NUMBER})\s*(?:-|\.\.\.|…|до)\s*\+?-?{NUMBER}\s*([a-zа-я°%][a-zа-я0-9/²°]*|%)")
+MODEL_TOKEN = re.compile(r"[a-zа-я0-9./-]+")
+LATIN_OR_DIGIT = re.compile(r"[a-z0-9]")
 
 # Однобуквенные единицы (в, а, м, с, г) намеренно не сравниваются парой:
 # «DM 02 в корпусе» неотличимо от вольт. Для них работает проверка самого числа.
@@ -164,7 +166,7 @@ def _check_facts(draft: LLMDraft, product: ProductInput) -> list[str]:
     title = normalize(draft.seo_title)
     # В скобках и после них в названиях из каталога идут параметры исполнения, а не обозначение модели.
     for token in MODEL_TOKEN.findall(normalize(product.name or "").split("(")[0]):
-        if token not in title:
+        if LATIN_OR_DIGIT.search(token) and token not in title:
             problems.append(f"{TITLE_LABEL}: обозначение модели «{token}» нужно написать как во входных данных.")
     return problems
 

@@ -1,11 +1,14 @@
 """Вызов Claude и перевод ошибок SDK в сообщения для пользователя."""
 
+import logging
 import os
 
 import anthropic
 
 from app.errors import LLMError
 from app.schemas import LLMDraft
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "claude-opus-5-5"
 DEFAULT_BASE_URL = "https://api.anthropic.com"
@@ -50,6 +53,7 @@ def _translate_status_error(exc: anthropic.APIStatusError) -> LLMError:
     if isinstance(exc, anthropic.RateLimitError):
         return LLMError("llm_rate_limit", 429, "Превышен лимит запросов к LLM. Повторите через минуту.")
     if isinstance(exc, anthropic.BadRequestError):
+        logger.error("LLM отклонила запрос: %s", exc.message)
         return LLMError("llm_bad_request", 502, "Сервис LLM отклонил запрос. Подробности в логе сервера.")
     if exc.status_code >= 500:
         return LLMError("llm_unavailable", 502, "Сервис LLM временно недоступен. Повторите позже.")

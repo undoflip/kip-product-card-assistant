@@ -1,3 +1,5 @@
+import time
+
 import pytest
 
 from app.guards import chars, check_draft, verify_extracted
@@ -215,3 +217,12 @@ def test_model_designation_before_brackets_is_still_checked():
     product = make_product(name="Манометр сварочный ТМ-210Р.00(0-2,5МПа)")
     problems = problems_for(product, seo_title="Манометр сварочный TM-210P.00 Манотомь")
     assert any("обозначение модели" in problem for problem in problems)
+
+
+@pytest.mark.parametrize("piece", ["1", "я", "1.", "1 ", "1-", "1...", "a"])
+def test_checks_stay_fast_on_long_repeated_input(piece):
+    text = piece * (40_000 // len(piece))
+    product = make_product(name=text, description=text)
+    started = time.perf_counter()
+    check_draft(make_draft(), product)
+    assert time.perf_counter() - started < 2
