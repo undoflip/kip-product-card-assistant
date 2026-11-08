@@ -1,0 +1,56 @@
+# Тесты и проверка безопасности на каждый push и PR.
+# Actions закреплены по commit SHA: тег можно перевесить, коммит нет. Обновляя, бери SHA тега из релиза.
+name: check
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test-python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - run: python -m pip install -r requirements.txt
+      - run: python -m ruff check .
+      - run: python -m ruff format --check .
+      - run: python -m pytest -q
+
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # gitleaks проверяет всю историю: удалённый секрет остаётся в старых коммитах
+          persist-credentials: false
+      # gitleaks ставится через go install: модуль сверяется с базой контрольных сумм Go,
+      # и не нужен gitleaks-action с его лицензией и правом комментировать PR. Сборка занимает около минуты.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+          cache: false
+      - name: secrets (gitleaks)
+        run: |
+          go install github.com/zricethezav/gitleaks/v8@v8.30.1
+          "$(go env GOPATH)/bin/gitleaks" git --redact --no-banner .
+      # Собирать osv-scanner через go install долго (больше 10 минут), поэтому берём action Google.
+      # Внутри он запускает образ ghcr.io/google/osv-scanner-action той же версии.
+      - name: vulnerable dependencies (osv-scanner)
+        uses: google/osv-scanner-action/osv-scanner-action@b1d267aea5211fa648d9d442fa64b90dbdcbdd36 # v2.7.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - name: static analysis (semgrep)
+        run: |
+          python -m pip install semgrep==1.184.0
+          semgrep scan --config p/default --metrics=off --disable-version-check --error

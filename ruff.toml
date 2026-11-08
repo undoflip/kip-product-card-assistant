@@ -1,0 +1,31 @@
+# Ruff: форматтер и линтер Python. Запуск: python -m ruff check . и python -m ruff format .
+
+target-version = "py311" # минимальная версия из README: от неё зависят правила UP
+line-length = 100
+
+[lint]
+select = [
+    "E",     # pycodestyle
+    "F",     # pyflakes
+    "I",     # порядок импортов
+    "B",     # bugbear: изменяемые аргументы по умолчанию, потерянные исключения
+    "BLE",   # голый except Exception
+    "SIM",   # упрощения
+    "C4",    # comprehensions
+    "ASYNC", # блокирующие вызовы в async-коде
+    "S",     # bandit: безопасность
+    "DTZ",   # datetime без часового пояса
+    "PERF",  # медленные идиомы
+    "UP",    # синтаксис новее target-version
+    "RUF",   # в том числе RUF006 (asyncio-задача без ссылки) и RUF032 (Decimal из float)
+]
+# Длинные строки и комментарии форматтер не переносит; длину держит он сам.
+# RUF001-RUF003 считают кириллицу «похожей на латиницу»: тексты проекта на русском, правило даёт только шум.
+ignore = ["E501", "RUF001", "RUF002", "RUF003"]
+
+[lint.per-file-ignores]
+# assert в тестах и есть проверка.
+"**/tests/**" = ["S101"]
+"**/test_*.py" = ["S101"]
+"**/*_test.py" = ["S101"]
+"**/conftest.py" = ["S101"]

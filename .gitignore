@@ -1,0 +1,19 @@
+# Секреты
+.env
+.env.*
+!.env.example
+
+# Окружение и кэши
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Исходный PDF задания в репозиторий не кладём
+*.pdf
+
+# Локальные настройки и заметки инструментов
+.claude/
+.playwright-mcp/

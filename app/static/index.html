@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Черновик карточки прибора</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --panel-bg: #e7ecea;
+    --enamel: #fbfcfb;
+    --ink: #1c2a2e;
+    --ink-soft: #566569;
+    --line: #cdd6d3;
+    --steel: #1f5f8b;
+    --in-range: #2f7d5b;
+    --caution: #a8611a;
+    --over: #b3362b;
+    --caution-bg: #fbf1e3;
+    --over-bg: #fbeae8;
+    --text: "Golos Text", system-ui, "Segoe UI", sans-serif;
+    --data: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--panel-bg);
+    color: var(--ink);
+    font: 400 15px/1.5 var(--text);
+  }
+  header { padding: 20px 24px 0; max-width: 1360px; margin: 0 auto; }
+  h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+  header p { margin: 2px 0 0; color: var(--ink-soft); }
+  main {
+    display: grid;
+    grid-template-columns: minmax(320px, 5fr) minmax(0, 8fr);
+    gap: 20px;
+    padding: 16px 24px 32px;
+    max-width: 1360px;
+    margin: 0 auto;
+    align-items: start;
+  }
+  .sheet { background: var(--enamel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+  h2 { margin: 0; font-size: 15px; font-weight: 600; }
+
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--line); }
+  .tabs button {
+    border: 0;
+    background: none;
+    padding: 6px 10px 8px;
+    color: var(--ink-soft);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    border-radius: 4px 4px 0 0;
+  }
+  .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--steel); font-weight: 600; }
+
+  label { display: block; font-weight: 500; margin: 0 0 4px; }
+  .field { margin-bottom: 14px; }
+  input, textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--ink);
+    font: inherit;
+  }
+  textarea { resize: vertical; }
+  #json-input { font-family: var(--data); font-size: 13px; min-height: 340px; }
+  .spec-row { display: grid; grid-template-columns: 3fr 2fr 32px; gap: 6px; margin-bottom: 6px; }
+  .spec-row button { padding: 0; font-size: 18px; line-height: 1; color: var(--ink-soft); }
+
+  button { font: inherit; cursor: pointer; color: var(--ink); }
+  .plain { border: 1px solid var(--line); background: #fff; border-radius: 6px; padding: 5px 10px; font-size: 13px; }
+  .plain:hover { border-color: var(--ink-soft); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
+  #generate {
+    border: 0;
+    border-radius: 6px;
+    background: var(--steel);
+    color: #fff;
+    font-weight: 600;
+    padding: 9px 16px;
+  }
+  #generate:hover { background: #184e74; }
+  #generate:disabled { background: var(--ink-soft); cursor: progress; }
+  :focus-visible { outline: 2px solid var(--steel); outline-offset: 2px; }
+
+  #placeholder { color: var(--ink-soft); padding: 40px 18px; text-align: center; }
+  #error { background: var(--over-bg); border-color: var(--over); }
+  #error h2 { color: var(--over); }
+  #error ul { margin: 6px 0 0; padding-left: 20px; }
+  #json-error { margin: 6px 0 0; color: var(--over); font-size: 13px; }
+
+  .result { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .summary { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; }
+  .summary h2 { font-size: 18px; font-weight: 700; line-height: 1.3; }
+  .summary p { margin: 2px 0 0; color: var(--ink-soft); }
+  .verdict { font-weight: 600; margin-top: 8px !important; }
+  .verdict.ok { color: var(--in-range); }
+  .verdict.needs_attention { color: var(--caution); }
+  .gauges { display: flex; gap: 18px; }
+  .gauge { width: 150px; text-align: center; }
+  .gauge svg { display: block; width: 100%; }
+  .gauge .needle { transform-box: view-box; transform-origin: 80px 82px; }
+  .gauge-value { font: 500 22px/1 var(--data); margin-top: -2px; }
+  .gauge-label { font-size: 12px; color: var(--ink-soft); line-height: 1.3; margin-top: 3px; }
+
+  .attention { background: var(--caution-bg); border-color: #e4c9a2; }
+  .attention h3 { margin: 12px 0 2px; font-size: 13px; font-weight: 600; }
+  .attention h3:first-child { margin-top: 0; }
+  .attention ul { margin: 0; padding-left: 20px; }
+  .attention p { margin: 0; }
+
+  .block-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .copyable { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .title-text { font-size: 17px; font-weight: 600; }
+  .description-text { max-width: 74ch; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; font-weight: 500; color: var(--ink-soft); }
+  td:nth-child(2) { font-family: var(--data); font-size: 14px; }
+  td.no-data { color: var(--caution); }
+  td:nth-child(3) { color: var(--ink-soft); font-size: 13px; }
+  .queries { margin: 0; padding-left: 20px; }
+  .commercial p { margin: 0 0 8px; }
+  .commercial p:last-child { margin: 0; }
+  .commercial strong { font-weight: 600; }
+  .export { display: flex; gap: 8px; flex-wrap: wrap; }
+  [hidden] { display: none !important; }
+
+  @media (max-width: 900px) {
+    main { grid-template-columns: minmax(0, 1fr); padding: 12px 16px 24px; }
+    header { padding: 16px 16px 0; }
+    .summary { grid-template-columns: minmax(0, 1fr); }
+    .gauges { justify-content: center; }
+  }
+  @media (max-width: 480px) {
+    th:nth-child(3), td:nth-child(3) { display: none; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .gauge .needle { transition: transform 700ms cubic-bezier(.3, 1.4, .5, 1); }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Черновик карточки прибора</h1>
+  <p>Значения в тексте сверяются с вашими данными. Всё, что не подтвердилось, попадёт в замечания.</p>
+</header>
+<main>
+  <section class="sheet" aria-label="Данные о товаре">
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" id="tab-form" aria-selected="true" aria-controls="pane-form">Форма</button>
+      <button type="button" role="tab" id="tab-json" aria-selected="false" aria-controls="pane-json">JSON</button>
+    </div>
+    <div id="pane-form" role="tabpanel" aria-labelledby="tab-form">
+      <div class="field"><label for="name">Название</label><input id="name" autocomplete="off"></div>
+      <div class="field"><label for="manufacturer">Производитель</label><input id="manufacturer" autocomplete="off"></div>
+      <div class="field">
+        <label id="specs-label">Характеристики</label>
+        <div id="spec-rows" aria-labelledby="specs-label"></div>
+        <button type="button" class="plain" id="add-spec">Добавить строку</button>
+      </div>
+      <div class="field"><label for="description">Описание или фрагмент паспорта</label><textarea id="description" rows="7"></textarea></div>
+    </div>
+    <div id="pane-json" role="tabpanel" aria-labelledby="tab-json" hidden>
+      <div class="field"><label for="json-input">Данные о товаре в формате JSON</label><textarea id="json-input" spellcheck="false"></textarea><p id="json-error" role="alert" hidden></p></div>
+    </div>
+    <div class="actions">
+      <button type="button" id="generate">Сформировать черновик</button>
+      <button type="button" class="plain" id="fill-example">Заполнить примером</button>
+    </div>
+  </section>
+
+  <section aria-live="polite" aria-label="Результат">
+    <div class="sheet" id="placeholder">Заполните данные о приборе и нажмите «Сформировать черновик».</div>
+    <div class="sheet" id="error" hidden></div>
+    <div class="result" id="result" hidden></div>
+  </section>
+</main>
+
+<script>
+const EXAMPLE = {
+  name: "Манометр показывающий DM 02",
+  manufacturer: "Манотомь",
+  specs: {
+    "диапазон измерений": "0–1,6 МПа",
+    "класс точности": "1,5",
+    "присоединение": "G1/2",
+    "диаметр корпуса": "100 мм",
+  },
+  description: "Прибор предназначен для измерения избыточного давления...",
+};
+const NO_DATA = "данных нет";
+const SOURCE_LABELS = { specs: "характеристики", description: "описание", none: "—" };
+
+const $ = (id) => document.getElementById(id);
+
+// Весь текст попадает на страницу через textContent: данные и ответ модели не исполняются как HTML.
+function el(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(attrs)) {
+    if (key === "class") node.className = value;
+    else node.setAttribute(key, value);
+  }
+  node.append(...children);
+  return node;
+}
+
+function addSpecRow(key = "", value = "") {
+  const keyInput = el("input", { "aria-label": "Название характеристики", placeholder: "класс точности" });
+  const valueInput = el("input", { "aria-label": "Значение", placeholder: "1,5" });
+  keyInput.value = key;
+  valueInput.value = value;
+  const remove = el("button", { type: "button", class: "plain", "aria-label": "Удалить строку" }, "×");
+  const row = el("div", { class: "spec-row" }, keyInput, valueInput, remove);
+  remove.addEventListener("click", () => row.remove());
+  $("spec-rows").append(row);
+}
+
+function readForm() {
+  const specs = {};
+  for (const row of $("spec-rows").children) {
+    const [key, value] = row.querySelectorAll("input");
+    if (key.value.trim()) specs[key.value.trim()] = value.value;
+  }
+  return {
+    name: $("name").value,
+    manufacturer: $("manufacturer").value,
+    specs,
+    description: $("description").value,
+  };
+}
+
+function fillForm(product) {
+  $("name").value = product.name ?? "";
+  $("manufacturer").value = product.manufacturer ?? "";
+  $("description").value = product.description ?? "";
+  $("spec-rows").replaceChildren();
+  Object.entries(product.specs ?? {}).forEach(([key, value]) => addSpecRow(key, String(value ?? "")));
+}
+
+const isPlainObject = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
+const isTextOrAbsent = (value) => value === undefined || value === null || typeof value === "string";
+const isSpecValue = (value) => value === null || typeof value === "string" || typeof value === "number";
+
+// Правила типов те же, что на сервере: в форму нельзя перенести то, что сервис всё равно отклонит.
+function parseProductJson(text) {
+  let product;
+  try {
+    product = JSON.parse(text);
+  } catch {
+    throw new Error("Некорректный JSON. Проверьте кавычки и запятые.");
+  }
+  if (!isPlainObject(product)) throw new Error("Ожидается JSON-объект с данными одного товара.");
+  for (const field of ["name", "manufacturer", "description"]) {
+    if (!isTextOrAbsent(product[field])) throw new Error(`Поле ${field} должно быть строкой.`);
+  }
+  const specs = product.specs ?? {};
+  if (!isPlainObject(specs) || !Object.values(specs).every(isSpecValue)) {
+    throw new Error("Поле specs должно быть объектом, значения в нём — строки или числа.");
+  }
+  return product;
+}
+
+function showJsonError(message) {
+  $("json-error").textContent = message;
+  $("json-error").hidden = !message;
+}
+
+function selectTab(tab) {
+  const isJson = tab === "json";
+  $("tab-json").setAttribute("aria-selected", isJson);
+  $("tab-form").setAttribute("aria-selected", !isJson);
+  $("pane-json").hidden = !isJson;
+  $("pane-form").hidden = isJson;
+}
+
+const jsonTabActive = () => $("tab-json").getAttribute("aria-selected") === "true";
+
+// Данные переносятся при смене вкладки. Клик по открытой вкладке ничего не делает, иначе он затёр бы правки.
+$("tab-form").addEventListener("click", () => {
+  if (!jsonTabActive()) return;
+  if ($("json-input").value.trim()) {
+    try {
+      fillForm(parseProductJson($("json-input").value));
+    } catch (error) {
+      showJsonError(error.message);
+      return;
+    }
+  }
+  showJsonError("");
+  selectTab("form");
+});
+$("tab-json").addEventListener("click", () => {
+  if (jsonTabActive()) return;
+  $("json-input").value = JSON.stringify(readForm(), null, 2);
+  selectTab("json");
+});
+$("json-input").addEventListener("input", () => showJsonError(""));
+$("add-spec").addEventListener("click", () => addSpecRow());
+$("fill-example").addEventListener("click", () => {
+  fillForm(EXAMPLE);
+  $("json-input").value = JSON.stringify(EXAMPLE, null, 2);
+  showJsonError("");
+});
+
+function copyButton(label, getText) {
+  const button = el("button", { type: "button", class: "plain" }, label);
+  button.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(getText());
+      button.textContent = "Скопировано";
+    } catch {
+      button.textContent = "Не удалось скопировать";
+    }
+    setTimeout(() => { button.textContent = label; }, 1500);
+  });
+  return button;
+}
+
+function block(title, copyText, ...content) {
+  const head = el("div", { class: "block-head" }, el("h2", {}, title));
+  if (copyText !== null) head.append(copyButton("Копировать", () => copyText));
+  return el("div", { class: "sheet" }, head, ...content);
+}
+
+// Шкала как у манометра: дуга на 180°, зелёная зона — допустимая длина.
+function gauge({ value, max, from, to, label }) {
+  const SVG = "http://www.w3.org/2000/svg";
+  const CX = 80, CY = 82, R = 68;
+  const point = (share, radius) => {
+    const angle = Math.PI * (1 - share);
+    return [CX + radius * Math.cos(angle), CY - radius * Math.sin(angle)];
+  };
+  const svgEl = (tag, attrs) => {
+    const node = document.createElementNS(SVG, tag);
+    for (const [key, val] of Object.entries(attrs)) node.setAttribute(key, val);
+    return node;
+  };
+  const arc = (a, b, color, width) => {
+    const [x1, y1] = point(a, R);
+    const [x2, y2] = point(b, R);
+    return svgEl("path", {
+      d: `M ${x1} ${y1} A ${R} ${R} 0 0 1 ${x2} ${y2}`,
+      fill: "none", stroke: color, "stroke-width": width,
+    });
+  };
+  const svg = svgEl("svg", { viewBox: "0 0 160 92", "aria-hidden": "true" });
+  svg.append(arc(0, 1, "var(--line)", 6), arc(from / max, to / max, "var(--in-range)", 6));
+  for (let i = 0; i <= 20; i++) {
+    const major = i % 5 === 0;
+    const [x1, y1] = point(i / 20, R - 5);
+    const [x2, y2] = point(i / 20, R - (major ? 14 : 9));
+    svg.append(svgEl("line", {
+      x1, y1, x2, y2, stroke: "var(--ink-soft)", "stroke-width": major ? 1.5 : 0.75,
+    }));
+  }
+  const share = Math.min(value / max, 1);
+  const needle = svgEl("line", {
+    class: "needle", x1: CX, y1: CY, x2: CX - (R - 8), y2: CY,
+    stroke: "var(--ink)", "stroke-width": 2, "stroke-linecap": "round",
+  });
+  needle.style.transform = "rotate(0deg)";
+  svg.append(needle, svgEl("circle", { cx: CX, cy: CY, r: 5, fill: "var(--ink)" }));
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    needle.style.transform = `rotate(${share * 180}deg)`;
+  }));
+
+  const inRange = value >= from && value <= to;
+  const number = el("div", { class: "gauge-value" }, String(value));
+  number.style.color = inRange ? "var(--in-range)" : "var(--over)";
+  const norm = from > 0 ? `${from}–${to}` : `до ${to}`;
+  return el("div", { class: "gauge", role: "img", "aria-label": `${label}, символов: ${value}, норма ${norm}` },
+    svg, number, el("div", { class: "gauge-label" }, label, el("br"), `норма ${norm}`));
+}
+
+function renderAttention(card) {
+  const parts = [];
+  if (card.warnings.length) {
+    parts.push(el("h3", {}, "Требует проверки"),
+      el("ul", {}, ...card.warnings.map((text) => el("li", {}, text))));
+  }
+  if (card.needs_clarification.length) {
+    parts.push(el("h3", {}, "Требует уточнения"),
+      el("ul", {}, ...card.needs_clarification.map((item) => el("li", {}, `${item.field}: ${item.reason}`))));
+  }
+  if (card.missing_fields.length) {
+    parts.push(el("h3", {}, "Нет во входных данных"), el("p", {}, card.missing_fields.join(", ") + "."));
+  }
+  return parts.length ? el("div", { class: "sheet attention" }, ...parts) : null;
+}
+
+function renderCard({ card, markdown }) {
+  const tsv = card.characteristics.map((row) => `${row.name}\t${row.value}`).join("\n");
+  const rows = card.characteristics.map((row) => {
+    const value = el("td", {}, row.value);
+    if (row.value === NO_DATA) value.className = "no-data";
+    return el("tr", {}, el("td", {}, row.name), value, el("td", {}, SOURCE_LABELS[row.source]));
+  });
+  const verdict = card.status === "ok"
+    ? "Автоматические проверки пройдены. Черновик готов к вычитке."
+    : "Есть замечания. Просмотрите их перед публикацией.";
+
+  const summary = el("div", { class: "sheet summary" },
+    el("div", {},
+      el("h2", {}, card.name),
+      el("p", {}, `Производитель: ${card.manufacturer}`),
+      el("p", { class: `verdict ${card.status}` }, verdict)),
+    el("div", { class: "gauges" },
+      gauge({ value: card.meta.title_length, max: 100, from: 0, to: 70, label: "Заголовок" }),
+      gauge({ value: card.meta.description_length, max: 1500, from: 800, to: 1200, label: "Описание" })));
+
+  const parts = [
+    summary,
+    renderAttention(card),
+    block("SEO-заголовок", card.seo_title, el("div", { class: "copyable title-text" }, card.seo_title)),
+    block("SEO-описание", card.seo_description, el("div", { class: "copyable description-text" }, card.seo_description)),
+    block("Ключевые характеристики", tsv, el("table", {},
+      el("thead", {}, el("tr", {}, el("th", {}, "Характеристика"), el("th", {}, "Значение"), el("th", {}, "Источник"))),
+      el("tbody", {}, ...rows))),
+    block("Поисковые запросы", card.search_queries.join("\n"),
+      el("ul", { class: "queries" }, ...card.search_queries.map((query) => el("li", {}, query)))),
+    block("Для менеджера", `${card.commercial.audience}\n\n${card.commercial.tasks}`,
+      el("div", { class: "commercial" },
+        el("p", {}, el("strong", {}, "Кому подходит. "), card.commercial.audience),
+        el("p", {}, el("strong", {}, "Какие задачи решает. "), card.commercial.tasks))),
+    el("div", { class: "export" },
+      copyButton("Копировать всю карточку в Markdown", () => markdown),
+      copyButton("Копировать JSON", () => JSON.stringify(card, null, 2))),
+  ].filter(Boolean);
+  $("result").replaceChildren(...parts);
+}
+
+function showError(error) {
+  const parts = [el("h2", {}, error.message)];
+  if (error.details && error.details.length) {
+    parts.push(el("ul", {}, ...error.details.map((text) => el("li", {}, text))));
+  }
+  $("error").replaceChildren(...parts);
+}
+
+function showOnly(id) {
+  for (const name of ["placeholder", "error", "result"]) $(name).hidden = name !== id;
+}
+
+$("generate").addEventListener("click", async () => {
+  const button = $("generate");
+  button.disabled = true;
+  button.textContent = "Модель готовит черновик…";
+  try {
+    const body = jsonTabActive() ? $("json-input").value : JSON.stringify(readForm());
+    const response = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    });
+    const data = await response.json();
+    if (response.ok) {
+      renderCard(data);
+      showOnly("result");
+    } else {
+      showError(data.error);
+      showOnly("error");
+    }
+  } catch {
+    showError({ message: "Сервис не отвечает. Проверьте, что он запущен, и повторите." });
+    showOnly("error");
+  } finally {
+    button.disabled = false;
+    button.textContent = "Сформировать черновик";
+  }
+});
+
+addSpecRow();
+addSpecRow();
+</script>
+</body>
+</html>
